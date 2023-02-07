@@ -2,9 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "develop"]
   pull_request:
-    branches: ["main", "develop"]
   workflow_dispatch:
 
 env:
@@ -20,6 +18,9 @@ jobs:
         target:
           - riscv32imc-esp-espidf
           - xtensa-esp32-espidf
+        idf-version:
+          - release/v4.4
+          - release/v5.0
 
     steps:
       - name: Setup | Checkout
@@ -31,8 +32,14 @@ jobs:
           ldproxy: true
       - uses: Swatinem/rust-cache@v2
       - name: Build
+        env:
+          ESP_IDF_VERSION: ${{ matrix.idf-version }}
+          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
         run: cargo build --target ${{ matrix.target }} --verbose --examples
       - name: Fmt check
         run: cargo fmt --check
       - name: Clippy check
-        run: cargo clippy --all-features -- -D clippy::all -W clippy::nursery
+        env:
+          ESP_IDF_VERSION: ${{ matrix.idf-version }}
+          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
+        run: cargo clippy --target ${{ matrix.target }} --all-features -- -D clippy::all -W clippy::nursery
