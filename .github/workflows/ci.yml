@@ -15,12 +15,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - riscv32imc-esp-espidf
-          - xtensa-esp32-espidf
-        idf-version:
-          - release/v4.4
-          - release/v5.0
+        include:
+          - target: riscv32imc-esp-espidf
+            idf-version: release/v4.4
+            rustflags: "-C default-linker-libraries"
+          - target: riscv32imc-esp-espidf
+            idf-version: release/v5.0
+            rustflags: "-C default-linker-libraries --cfg espidf_time64"
+          - target: xtensa-esp32-espidf
+            idf-version: release/v4.4
+          - target: xtensa-esp32-espidf
+            idf-version: release/v5.0
+            rustflags: "--cfg espidf_time64"
 
     steps:
       - name: Setup | Checkout
@@ -30,16 +36,16 @@ jobs:
         with:
           default: true
           ldproxy: true
-      - uses: Swatinem/rust-cache@v2
+      # - uses: Swatinem/rust-cache@v2
       - name: Build
         env:
           ESP_IDF_VERSION: ${{ matrix.idf-version }}
-          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
-        run: cargo build --target ${{ matrix.target }} --verbose --examples
+          RUSTFLAGS: "${{ matrix.rustflags }}"
+        run: cargo build --target ${{ matrix.target }} --examples
       - name: Fmt check
         run: cargo fmt --check
       - name: Clippy check
         env:
           ESP_IDF_VERSION: ${{ matrix.idf-version }}
-          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
+          RUSTFLAGS: "${{ matrix.rustflags }}"
         run: cargo clippy --target ${{ matrix.target }} --all-features -- -D clippy::all -W clippy::nursery
